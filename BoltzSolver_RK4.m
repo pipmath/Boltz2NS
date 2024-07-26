@@ -246,7 +246,7 @@ function geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, c_s, dealias)
 
 % Coefficients including speed of sound constant
 C2 = 1/c_s^2;
-C4 = 1/(2*c_s^4);
+C4 = C2^2/2; % 1/(2*c_s^4);
 
 % Fourier transform of velocity components for nonlinear components
 u1 = real(ifft2(u1h));
