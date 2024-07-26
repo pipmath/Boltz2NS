@@ -122,7 +122,7 @@ end % End of BoltzSolver_RK4
 % tvals ...... Values for time loop (Nd, TSCREEN)
 % derivs ..... Spatial derivative operators (Kx, Ky, Pois, filt)
 % disct ...... Discretization values (dt, dx, dy)
-% params ..... Physical parameters (nu, ep)
+% params ..... Physical parameters (nu, ep, cs)
 % T0 ......... Initial Time
 %
 % FORMAT
@@ -239,7 +239,7 @@ end % End of solve_init
 % g_hat ..... Particle velocity distribution (with nonlinear effects)
 %
 % FORMAT
-% geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, dealias)
+% geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, c_s, dealias)
 %
 % -----------------------------------------------------------------------------------
 function geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, c_s, dealias)
