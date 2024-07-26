@@ -90,11 +90,13 @@ disp('==========================================================================
 
         % Solve the RHS of the Boltzmann equation
         function RHS = RHSgeqn(g_hat)
-            % Compute density via summation, and velocity via weighted sums (independent var v)
-            [u1_hat,  u2_hat, rhoh] = rhou1u2(g_hat, derivs.Kx, derivs.Ky, derivs.Pois);
+            % Compute density via summation, and velocity via weighted sums (indep v)
+            [u1_hat,  u2_hat, rhoh] = rhou1u2( g_hat, derivs.Kx, derivs.Ky, ... 
+                                               derivs.Pois );
 
             % Compute geq from velocity and rho
-            geqh(:, :, :) = u2geq_hat(u1_hat, u2_hat, rhoh, wgts, params.ep, derivs.filt);
+            geqh(:, :, :) = u2geq_hat( u1_hat, u2_hat, rhoh, wgts, params.ep, ...
+                                       params.cs, derivs.filt );
 
             % RHS term of Boltzmann equation
             RHS(:,:,1:9) = derivs.FTh(:, :, 1:9).*g_hat(:,:,1:9) + geqh(:,:,1:9)...
@@ -152,7 +154,7 @@ rho0(:,:) = 1/numel(rho0); % Normalization factor for FFT
 rhoh      = fft2(rho0);    % FFT
 
 % Compute geq (used as initial condition for Boltzmann) from velocity and rho
-g_hat = u2geq_hat(u01_hat, u02_hat, rhoh, wgts, ep, dealias);
+g_hat = u2geq_hat(u01_hat, u02_hat, rhoh, wgts, ep, c_s, dealias);
 
 % Compute density via summation, and velocity via weighted sums (independent v)
 [u1_hat,  u2_hat, ~, rho] = rhou1u2(g_hat, Kx, Ky, Pois_hat);
@@ -209,6 +211,7 @@ tvals.TSCREEN = TSCREEN; % Screen update interval time
 % Store physical parameters
 params.nu  = nuB; % Viscosity for Boltzmann equation
 params.ep  = ep;  % Knudsen number
+params.cs  = c_s; % Speed of sound constant
 % String for saving
 params.str = sprintf('Boltz_%s_N%d_dt%de%d_T%de%d_NU%de%d_EP%de%d_Ns%d.mat', ...
     IC, N_DNS, dtfac, dtcoeff, Tfac, Tcoeff, nufac, nucoeff, epfac, epcoeff, Nsave);
@@ -220,7 +223,8 @@ end % End of solve_init
 % AUTHOR ... Pritpal Matharu
 % DATE ..... 2024/07/25
 %
-% Function uses the velocity components, density, lattice weights, and epsilon
+% Function uses the velocity components, density, lattice weights, and epsilon to 
+% determine the particle velocity distribution geq with nonlinear effects O(epsilon)
 %
 % INPUT
 % u1_hat ...... Fluid velocity, x component
@@ -228,6 +232,7 @@ end % End of solve_init
 % rhoh ........ Fourier transform of particle density
 % w ........... Weights for D2Q9 Lattice Boltzmann
 % ep .......... Knudsen number
+% c_s ......... Speed of sound constant
 % dealias ..... Gaussian spectral filter for dealiasing
 %
 % OUTPUT
@@ -237,7 +242,11 @@ end % End of solve_init
 % geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, dealias)
 %
 % -----------------------------------------------------------------------------------
-function geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, dealias)
+function geqh = u2geq_hat(u1h, u2h, rhoh, w, ep, c_s, dealias)
+
+% Coefficients including speed of sound constant
+C2 = 1/c_s^2;
+C4 = 1/(2*c_s^4);
 
 % Fourier transform of velocity components for nonlinear components
 u1 = real(ifft2(u1h));
@@ -247,7 +256,7 @@ u2 = real(ifft2(u2h));
 u11  = u1.*u1;
 u22  = u2.*u2;
 u12  = u1.*u2;
-uabs = (3/2)*( u22 + u11 );
+uabs = (C2/2)*( u22 + u11 );
 
 % Dealias nonlinear terms
 u11h  = ep*fft2(u11).*dealias;
@@ -257,15 +266,15 @@ uabsh = ep*fft2(uabs).*dealias;
 rhoh  = rhoh.*dealias;
 
 % Compute Boltzmann initial condition from NS velocity field
-geqh(:,:,1) = ( rhoh + 3*u1h          - uabsh + (9/2)*u11h                             )*w(1);
-geqh(:,:,2) = ( rhoh + 3*u2h          - uabsh + (9/2)*u22h                             )*w(2);
-geqh(:,:,3) = ( rhoh - 3*u1h          - uabsh + (9/2)*u11h                             )*w(3);
-geqh(:,:,4) = ( rhoh - 3*u2h          - uabsh + (9/2)*u22h                             )*w(4);
-geqh(:,:,5) = ( rhoh + 3*( u1h + u2h) - uabsh + (9/2)*2*u12h + (9/2)*u11h + (9/2)*u22h )*w(5);
-geqh(:,:,6) = ( rhoh + 3*(-u1h + u2h) - uabsh - (9/2)*2*u12h + (9/2)*u11h + (9/2)*u22h )*w(6);
-geqh(:,:,7) = ( rhoh + 3*(-u1h - u2h) - uabsh + (9/2)*2*u12h + (9/2)*u11h + (9/2)*u22h )*w(7);
-geqh(:,:,8) = ( rhoh + 3*( u1h - u2h) - uabsh - (9/2)*2*u12h + (9/2)*u11h + (9/2)*u22h )*w(8);
-geqh(:,:,9) = ( rhoh                  - uabsh                                          )*w(9);
+geqh(:,:,1) = ( rhoh + C2*u1h          -uabsh + C4*u11h                       )*w(1);
+geqh(:,:,2) = ( rhoh + C2*u2h          -uabsh + C4*u22h                       )*w(2);
+geqh(:,:,3) = ( rhoh - C2*u1h          -uabsh + C4*u11h                       )*w(3);
+geqh(:,:,4) = ( rhoh - C2*u2h          -uabsh + C4*u22h                       )*w(4);
+geqh(:,:,5) = ( rhoh + C2*( u1h + u2h) -uabsh + C4*2*u12h + C4*u11h + C4*u22h )*w(5);
+geqh(:,:,6) = ( rhoh + C2*(-u1h + u2h) -uabsh - C4*2*u12h + C4*u11h + C4*u22h )*w(6);
+geqh(:,:,7) = ( rhoh + C2*(-u1h - u2h) -uabsh + C4*2*u12h + C4*u11h + C4*u22h )*w(7);
+geqh(:,:,8) = ( rhoh + C2*( u1h - u2h) -uabsh - C4*2*u12h + C4*u11h + C4*u22h )*w(8);
+geqh(:,:,9) = ( rhoh                   -uabsh                                 )*w(9);
 end % End of u2geq_hat
 
 % -----------------------------------------------------------------------------------
