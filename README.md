@@ -1,5 +1,5 @@
 # Lattice BGK and Navier-Stokes Numerical Solvers (Boltz2NS)
-MATLAB code to solve the Lattice BGK and Navier-Stokes equation, and compare the numerical solutions in order to determine the rate of the hydrodynamic limit of the macroscopic vorticity in 2D.
+MATLAB code to solve the Lattice BGK Boltzmann (D2Q9) and Navier-Stokes equation, and compare the numerical solutions in order to determine the rate of the hydrodynamic limit of the macroscopic vorticity in 2D.
 
 # Files
 - `boltz_init.m`: Script initializes variables and workspace for running Navier-Stokes and LBGK Boltzmann solvers.
